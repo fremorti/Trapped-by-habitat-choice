@@ -168,7 +168,7 @@ LH <- read.table("LH.txt", header = 1)
 LH$treatment = factor(LH$treatment,c("T","R","C", "S"))
 str(LH)
 
-LH_pre_ <- read.csv('LH_pre.csv', header = 1, sep = ',')
+LH_pre_ <- read.csv('LH_pre.csv', header = 1, sep = ';')
 colnames(LH_pre_)[1] = 'cg'
 LH_pre_$nr <- as.factor(LH_pre_$nr)
 str(LH_pre_)
@@ -228,7 +228,7 @@ m_LHpre <- map2stan(
     theta ~ dexp(1),
     c(bC, bT) ~ dnorm(0, 1)
   ) ,
-  data =  LH_pre[LH_pre$day == 13 & LH_pre$cg == 'tomato',], chains = 2, cores = 2, iter = 10000, warmup = 1000)
+  data =  LH_pre[LH_pre$day == 12 & LH_pre$cg == 'tomato',], chains = 2, cores = 2, iter = 10000, warmup = 1000)
 
 
 precis(m_LHpre)
