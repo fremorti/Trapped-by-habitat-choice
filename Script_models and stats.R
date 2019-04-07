@@ -35,7 +35,7 @@ m_ch3 <- map2stan(
     theta ~ dexp(1),                                                                          #prior distribution of betabinomial shape (theta)
     rho ~ dlkjcorr(2)                                                                         #prior of covariance of multivariate normal distribution
   ) ,
-  data =  choice[!is.na(choice$tomato)],                                                      #omit NA's due to lost data
+  data =  choice[!is.na(choice$tomato),],                                                      #omit NA's due to lost data
   constraints = list(theta="lower=0"),                                                        #contrain theta to positive values 
   chains = 2, cores = 2, iter = 10000, warmup = 1000)                                         #define the number of markov chains, cpu cores to use, the number of iterations to be run and the number of warmup chain iterations before sampling
 
