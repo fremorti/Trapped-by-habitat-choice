@@ -10,7 +10,7 @@ library(gridExtra)
 #################################
 
 #import dataset and resolve some issues with dataframe
-choice <- read.csv("choice.csv", header = 1, sep = ';')
+choice <- read.csv("choice.csv", header = 1)
 choice$treatment <- factor(choice$treatment, c('R', 'T', 'C'))
 colnames(choice)[1] <- 'code'
 choice$code <-as.factor(choice$code)
