@@ -29,7 +29,7 @@ m_ch3 <- map2stan(
     logit(p) <- a[code] + aC*treatC + aT*treatT +(b[code] + bC*treatC + bT*treatT)*selection, #we use a logit function as link function on the proportion (p), which depends on the selection round (selection), the selection regime (treaT, treatC) and its interaction
                                                                                               #there is a varying intercept and varying slope for each replica
     c(a, b)[code] ~ dmvnorm2(c(a_0, b_0), sigma_code, rho),                                   #multivariate normal distribution of varying intercepts and slopes
-    a_0 ~ dnorm(0.5,0.5),                                                                     #prior distribution of varying intercepts
+    a_0 ~ dnorm(0,2),                                                              #prior distribution of varying intercepts
     c(aC, aT, b_0, bC, bT) ~ dnorm(0, 0.5),                                                   #prior distributions of cucumber choice parameter, tomato choice parameter, varying slopes, cucumber slope parameter and tomato choice slope parameter
     sigma_code ~ dcauchy(0, 2),                                                               #prior distribution for standard deviation of varying slopes and varying intercepts
     theta ~ dexp(1),                                                                          #prior distribution of betabinomial shape (theta)
@@ -37,12 +37,15 @@ m_ch3 <- map2stan(
   ) ,
   data =  choice[!is.na(choice$tomato),],                                                      #omit NA's due to lost data
   constraints = list(theta="lower=0"),                                                        #contrain theta to positive values 
-  chains = 2, cores = 2, iter = 10000, warmup = 1000)                                         #define the number of markov chains, cpu cores to use, the number of iterations to be run and the number of warmup chain iterations before sampling
+  chains = 2, cores = 2, iter = 10000, warmup = 5000)                                         #define the number of markov chains, cpu cores to use, the number of iterations to be run and the number of warmup chain iterations before sampling
 
-#check model estimates
+#check markov chain mixing
+plot(m_ch3)
+par(mfrow = c(1,1))
+#check model estimates and Gelman-Rubin convergence criterion (Rhat, should be 1.00)
 precis(m_ch3, depth = 2)
 
-#sample posterior slopes (similar to link
+#sample posterior slopes (similar to link)
 post <- extract.samples(m_ch3)
 pbR <- post$b_0
 pbC <- post$b_0 + post$bC
@@ -52,7 +55,7 @@ pbT <- post$b_0 + post$bT
 p <- data.frame('R'= pbR, 'C' = pbC, 'T' = pbT)
 p_ <- gather(p, key = 'treatment', value = 'post')
 (pred_slopes <- ggplot(data = p_, aes(x = treatment, y = post, color = treatment))+
-    geom_violin(alpha = 0.3, aes(fill = treatment))+
+    geom_violin(alpha = 0.3, draw_quantiles = c(0.09, 0.5, 0.91), aes(fill = treatment))+
     ggtitle('posterior predicted log-odds slope')+
     ylab('predicted log-odds slope')+
     scale_color_brewer( palette = "Dark2")+
@@ -63,7 +66,7 @@ p_ <- gather(p, key = 'treatment', value = 'post')
 pdiff <- data.frame('C_R'= pbC-pbR, 'C_T' = pbC-pbT, 'T_R' = pbT-pbR)
 pdiff_ <- gather(pdiff, key = 'pairwise_difference', value = 'post')
 (pred_diff_slopes <- ggplot(data = pdiff_, aes(x = pairwise_difference, y = post))+
-    geom_violin()+
+    geom_violin(draw_quantiles = c(0.09, 0.5, 0.91))+
     ggtitle('posterior predicted differences in log-odds slope')+
     ylab('predicted differences')+
     xlab('pairs of treatments'))
@@ -106,13 +109,13 @@ m_hi1 <- map2stan(
     tomato2 ~ dbetabinom(total2, p, theta), 
     logit(p) <- a[treatment] + b1*matC,     
     a[treatment] ~ dnorm(a, sigma_t),       
-    a ~ dnorm(0, 0.5),                      
-    b1 ~ dnorm(0, 1),                       
+    a ~ dnorm(0, 2),                      
+    b1 ~ dnorm(0, 2),                       
     theta ~ dexp(1),                        
     sigma_t ~ dcauchy(0, 1)                 
     
   ) ,
-  data =  hi, chains = 2, cores = 2, iter = 20000, warmup = 1000) #define data set that is used, the number of markov chains, cpu cores to use, the number of iterations to be run and the number of warmup chain iterations before sampling
+  data =  hi, chains = 2, cores = 2, iter = 10000, warmup = 1000) #define data set that is used, the number of markov chains, cpu cores to use, the number of iterations to be run and the number of warmup chain iterations before sampling
 
 #check estimated model parameters
 precis(m_hi1, depth = 2)
@@ -126,7 +129,7 @@ b_after <- data.frame('delta_after' = l_after[, 1]-l_after[,2])
 #proportion choosing tomato according to developmental environment
 (bp_hi_post <- ggplot(data = hi, aes(x = mat, y = rel_tomato2))+
     geom_boxplot()+
-    geom_violin(data = a_after, aes(x = treatment, y = t, width = 0.5))+
+    geom_violin(data = a_after, draw_quantiles = c(0.09, 0.5, 0.91), aes(x = treatment, y = t, width = 0.5))+
     scale_y_continuous(limits = c(0, 1))+
     ggtitle('tomato preference end')+
     xlab('developmental host')+
@@ -150,14 +153,14 @@ m_hipre <- map2stan(
   alist(
     tomato ~ dbetabinom(total, p, theta),
     logit(p) <- a + b1*matC,
-    a <- dnorm(0,0.5),
-    b1 <- dnorm(0, 1),
+    a <- dnorm(0,2),
+    b1 <- dnorm(0, 2),
     theta ~ dexp(1)
   ) ,
-  data =  hi_pre, chains = 2, cores = 2, iter = 4000, warmup = 1000)
+  data =  hi_pre, chains = 2, cores = 2, iter = 10000, warmup = 5000)
 
 #check estimated variables
-precis(m_hipre)
+precis(m_hipre, depth = 2)
 
 #sample posterior
 l <- link(m_hipre, data = list(matC = c(0,1)))
@@ -166,7 +169,7 @@ l <- link(m_hipre, data = list(matC = c(0,1)))
 a_pre <- gather(data.frame('T' = l[,1], 'C' = l[,2]), key = 'treatment', value = 't')
 (bp_hi_pre <- ggplot(data = hi_pre, aes(x = mat, y = rel_tomato))+
     geom_boxplot()+
-    geom_violin(data = a_pre, aes(x = treatment, y=t, width = 0.5))+
+    geom_violin(data = a_pre, draw_quantiles = c(0.09, 0.5, 0.91), aes(x = treatment, y=t, width = 0.5))+
     scale_y_continuous(limits = c(0, 1))+
     ggtitle('tomato preference start')+
     xlab('developmental host')+
@@ -178,7 +181,7 @@ a_pre <- gather(data.frame('T' = l[,1], 'C' = l[,2]), key = 'treatment', value =
 b <- gather(data.frame('start' = l[, 1]-l[, 2], 'end' = l_after[, 1]-l_after[, 2]), key = 'time', value = 't')
 b$time <- factor(b$time, c('start', 'end'))
 (delta_hi <- ggplot(data = b, aes(x = time, y = t))+
-    geom_violin()+
+    geom_violin(draw_quantiles = c(0.09, 0.5, 0.91))+
     scale_y_continuous(limits = c(-0.35, 1))+
     ggtitle('posterior predicted differences')+
     xlab('time')+
@@ -249,7 +252,7 @@ a <- gather(data.frame('B' = simB, 'T' = simT, 'C' = simC), key = 'treatment', v
 (fit_after <- ggplot(data = LH, aes(x = patch, y = X12nomales))
   +geom_boxplot()+
     expand_limits(y = 0)+
-    geom_violin(data = a, aes(x = treatment, y = t, width = 0.5))+
+    geom_violin(data = a, draw_quantiles = c(0.09, 0.5, 0.91), aes(x = treatment, y = t, width = 0.5))+
     ggtitle('reproductive success end')+
     xlab('host')+
     ylab('deutonymphs produced in 12 days')+
@@ -259,7 +262,7 @@ a <- gather(data.frame('B' = simB, 'T' = simT, 'C' = simC), key = 'treatment', v
 #plot estimated differences of reproductive success between different hosts at end
 b <- gather(data.frame('B_C'=simB-simC, 'B_T'=simB-simT, 'T_C'=simT-simC), key = 'pairs', value = 'pairwise_differences')
 (fit_diff_after <- ggplot(data = b, aes(x = pairs, y = pairwise_differences))+
-  geom_violin()+
+  geom_violin(draw_quantiles = c(0.09, 0.5, 0.91))+
   expand_limits(y = 0)+
   ggtitle('posterior predicted differences end')+
   xlab('pairs of treatments'))
@@ -286,9 +289,9 @@ simT <- exp(post$a+post$bT)
 
 #plot estimated reproductive success on different hosts at start
 a_ <- gather(data.frame('B' = simB, 'T' = simT, 'C' = simC), key = 'treatment', value = 't')
-(fit_before <- ggplot(data = LH_pre[LH_pre$day == 13 & LH_pre$cg == 'tomato',], aes(x = plant, y = nomales))+
+(fit_before <- ggplot(data = LH_pre[LH_pre$day == 12 & LH_pre$cg == 'tomato',], aes(x = plant, y = nomales))+
     geom_boxplot()+
-    geom_violin(data = a_, aes(x = treatment, y = t, width = 0.5, trim = 1))+
+    geom_violin(data = a_, draw_quantiles = c(0.09, .5, 0.91), aes(x = treatment, y = t, width = 0.5, trim = 1))+
     ggtitle('reproductive success start')+
     xlab('host')+
     ylab('deutonymphs produced in 12 days')+
@@ -298,7 +301,7 @@ a_ <- gather(data.frame('B' = simB, 'T' = simT, 'C' = simC), key = 'treatment', 
 #plot estimated differences of reproductive success between different hosts at start
 b_ <- gather(data.frame('B_C'=simB-simC, 'B_T'=simB-simT, 'T_C'=simT-simC), key = 'pairs', value = 'pairwise_differences')
 (fit_diff_before <- ggplot(data = b_, aes(x = pairs, y = pairwise_differences))+
-  geom_violin()+
+  geom_violin(draw_quantiles = c(0.09, .5, 0.91))+
   expand_limits(y = 0)+
   ggtitle('posterior predicted differences start')+
   xlab('pairs of treatments'))
